@@ -369,6 +369,7 @@ function renderCharts(points) {
 
 let importedPoints = [];
 let engineeringCurve = [];
+let demoMode = false;
 const csvFile = document.getElementById("csv-file");
 const dropZone = document.getElementById("drop-zone");
 const csvStatus = document.getElementById("csv-status");
@@ -596,6 +597,7 @@ function renderImportReport(result) {
 }
 
 function resetDataset() {
+  demoMode = false;
   importedPoints = [];
   engineeringCurve = [];
   document.getElementById("engineering-curve-file").value = "";
@@ -610,36 +612,60 @@ function resetDataset() {
   seriesEmpty.querySelector("strong").textContent = "Time-series analysis is ready";
   seriesEmpty.querySelector("p").textContent = "Import a CSV to see period totals, volume-weighted indicators, charts, interval calculations, and optional period comparison.";
   document.getElementById("remove-data").hidden = true;
+  document.getElementById("clear-demo-data").hidden = true;
+  document.getElementById("demo-notice").hidden = true;
+  chartsRoot.replaceChildren();
+  document.getElementById("interval-rows").replaceChildren();
   document.getElementById("compare-panel").open = false;
   document.getElementById("comparison-results").hidden = true;
   interventionResults.hidden = true;
+  document.getElementById("intervention-charts").replaceChildren();
   renderFloorAnalysis([], identifyFloorCurve([]));
   methodStatus.textContent = "Import a dataset to calculate temperature potential.";
+  updateMethodVisibility();
   updateInterventionAvailability();
   dropZone.classList.remove("drag-active");
 }
 
-async function importFile(file) {
-  if (!file) return;
+function prefillDemoIntervention() {
+  document.getElementById("intervention-name").value = "Synthetic return-side heat utilization example";
+  document.getElementById("intervention-date").value = "2023-01-01";
+  document.getElementById("intervention-type").selectedIndex = 0;
+  document.getElementById("intervention-stabilization").value = "0";
+  document.getElementById("intervention-baseline-start").value = "2022-01-01";
+  document.getElementById("intervention-baseline-end").value = "2022-12-31";
+  document.getElementById("intervention-after-start").value = "2023-01-01";
+  document.getElementById("intervention-after-end").value = "2023-12-31";
+  document.getElementById("intervention-floor-reference").value = "baseline";
+}
+
+async function importCsvContent(fileName, readText, isDemo = false) {
   importedPoints = [];
+  demoMode = isDemo;
   seriesResults.hidden = true;
   seriesEmpty.hidden = true;
   importReport.hidden = true;
   document.getElementById("compare-panel").open = false;
   document.getElementById("comparison-results").hidden = true;
-  csvStatus.textContent = `Reading ${file.name}…`;
-  document.getElementById("remove-data").hidden = false;
+  csvStatus.textContent = `Reading ${fileName}…`;
+  document.getElementById("remove-data").hidden = isDemo;
+  document.getElementById("clear-demo-data").hidden = true;
+  document.getElementById("demo-notice").hidden = true;
   document.getElementById("charts").replaceChildren();
   document.getElementById("interval-rows").replaceChildren();
   dropZone.classList.remove("drag-active");
 
   try {
-    const result = parseVETCsv(await file.text());
+    const result = parseVETCsv(await readText());
     importedPoints = result.acceptedRows;
+    demoMode = isDemo;
+    document.getElementById("clear-demo-data").hidden = !isDemo;
+    document.getElementById("demo-notice").hidden = !isDemo;
     renderImportReport(result);
-    csvStatus.textContent = `${file.name} · ${result.rowCount} rows read · ${result.acceptedRows.length} accepted · ${result.rejectedCount} rejected.`;
+    csvStatus.textContent = `${fileName} · ${result.rowCount} rows read · ${result.acceptedRows.length} accepted · ${result.rejectedCount} rejected.`;
     if (importedPoints.length) {
       prepareInterventionRanges(importedPoints);
+      if (isDemo) prefillDemoIntervention();
       refreshPotentialAnalysis(true);
     } else {
       seriesEmpty.hidden = false;
@@ -651,9 +677,53 @@ async function importFile(file) {
     seriesEmpty.querySelector("strong").textContent = "CSV could not be read";
     seriesEmpty.querySelector("p").textContent = error.message;
     renderImportReport({ rowCount: 0, acceptedRows: [], rejectedCount: 0, rejections: [], globalErrors: [error.message] });
-    csvStatus.textContent = `${file.name} · 0 accepted · 0 rejected.`;
+    csvStatus.textContent = `${fileName} · 0 accepted · 0 rejected.`;
+    if (isDemo) {
+      demoMode = false;
+      document.getElementById("clear-demo-data").hidden = true;
+      document.getElementById("demo-notice").hidden = true;
+    }
   }
 }
+
+function importFile(file) {
+  if (!file) return;
+  return importCsvContent(file.name, () => file.text());
+}
+
+function loadDemoData() {
+  const demoUrl = new URL("./sample-vet-data.csv", import.meta.url);
+  return importCsvContent("sample-vet-data.csv", async () => {
+    const response = await fetch(demoUrl, { credentials: "same-origin" });
+    if (!response.ok) throw new Error(`Demo CSV request failed (${response.status}).`);
+    return response.text();
+  }, true);
+}
+
+function clearDemoData() {
+  if (!demoMode) return;
+  resetDataset();
+  potentialMethod.value = "automatic";
+  document.getElementById("manual-cap").value = "";
+  document.getElementById("manual-floor").value = "";
+  document.getElementById("intervention-name").value = "";
+  document.getElementById("intervention-type").selectedIndex = 0;
+  document.getElementById("intervention-date").value = "";
+  document.getElementById("intervention-stabilization").value = "0";
+  document.getElementById("intervention-notes").value = "";
+  for (const id of ["intervention-baseline-start", "intervention-baseline-end", "intervention-after-start", "intervention-after-end"]) {
+    document.getElementById(id).value = "";
+  }
+  for (const id of ["baseline-start", "baseline-end", "comparison-start", "comparison-end"]) {
+    document.getElementById(id).value = "";
+  }
+  document.getElementById("intervention-floor-reference").value = "baseline";
+  document.getElementById("floor-development-outdoor").value = "-10";
+  updateMethodVisibility();
+}
+
+document.getElementById("load-demo-data").addEventListener("click", loadDemoData);
+document.getElementById("clear-demo-data").addEventListener("click", clearDemoData);
 
 csvFile.addEventListener("change", () => importFile(csvFile.files?.[0]));
 dropZone.addEventListener("dragover", event => {

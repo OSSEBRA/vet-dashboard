@@ -22,6 +22,92 @@
         <p class="intro">Track useful heat delivered per unit of circulated primary water and its utilization of the available network temperature potential.</p>
       </header>
 
+      <details class="help-guide">
+        <summary>How to use this dashboard</summary>
+        <div class="help-guide-content">
+          <div class="help-grid">
+            <section class="help-section">
+              <h2>Quick start</h2>
+              <h3>Option 1 — Try the demo</h3>
+              <ol>
+                <li>Open the Time series tab.</li>
+                <li>Click <strong>Load demo data</strong>.</li>
+                <li>Review the automatically identified CAP/FLOOR behavior and VET results.</li>
+                <li>Open Intervention / Three-pipe analysis to see the synthetic before/after example.</li>
+              </ol>
+              <p>The demo dataset is synthetic and does not represent a real district-heating network.</p>
+              <h3>Option 2 — Analyze your own network</h3>
+              <ol>
+                <li>Export time-series data from the district-heating monitoring or metering system.</li>
+                <li>Format the data as CSV.</li>
+                <li>Upload the CSV in the Time series tab.</li>
+                <li>Choose the temperature-potential method.</li>
+                <li>Review VET, η_VET, temperature behavior and circulation.</li>
+                <li>Use Compare periods or Intervention analysis when appropriate.</li>
+              </ol>
+            </section>
+
+            <section class="help-section">
+              <h2>Preparing your CSV file</h2>
+              <p>Every row is one measurement/energy interval. Sold energy and pumped volume in a row must cover the same interval. ISO 8601 timestamps are recommended. No fixed timestep is required: hourly, daily and other time-resolved data work when each row is internally consistent.</p>
+              <p><strong>Basic VET:</strong> <code>timestamp</code>, <code>sold_energy_MWh</code>, <code>pumped_volume_m3</code><br>
+                <strong>Automatic CAP:</strong> <code>supply_temperature_C</code><br>
+                <strong>Automatic historical FLOOR:</strong> <code>return_temperature_C</code>, <code>outdoor_temperature_C</code><br>
+                <strong>Optional / alternative bounds:</strong> <code>T_cap_C</code>, <code>T_floor_C</code>, mainly for supplied engineering bounds rather than automatic historical identification.</p>
+              <p>Units: energy is MWh per interval, pumped volume is m³ per interval, and temperatures are °C. Date-only and date/time values are interpreted consistently in UTC.</p>
+              <pre><code>timestamp,sold_energy_MWh,pumped_volume_m3,supply_temperature_C,return_temperature_C,outdoor_temperature_C
+2026-01-01,82.4,1850,84.2,39.7,-12.3
+2026-01-02,79.8,1780,83.5,39.1,-10.8</code></pre>
+              <p>Use timestamps such as <code>2026-01-01T00:00:00</code> or daily dates such as <code>2026-01-01</code>.</p>
+            </section>
+
+            <section class="help-section">
+              <h2>Temperature-potential methods</h2>
+              <h3>Automatic / Historical</h3>
+              <p>Recommended for operational analysis when sufficient network data are available. T_cap comes from measured supply temperature. T_floor is identified from historical return-temperature behavior relative to outdoor temperature. Historical FLOOR is an empirical operational reference, not a universal physical minimum.</p>
+              <h3>Engineering curve</h3>
+              <p>Use when an operator already has an engineering-defined temperature envelope or target curve.</p>
+              <h3>Manual / Scenario</h3>
+              <p>Use for simple calculations, assumptions and what-if scenarios where T_cap and T_floor are entered manually.</p>
+            </section>
+
+            <section class="help-section">
+              <h2>Main outputs</h2>
+              <dl>
+                <dt>VET [kWh/m³]</dt><dd>Useful sold heat delivered per cubic metre of circulated primary water.</dd>
+                <dt>η_VET [%]</dt><dd>Utilization relative to the selected temperature-potential reference.</dd>
+                <dt>Measured ΔT</dt><dd>Measured supply minus measured return temperature.</dd>
+                <dt>Reference temperature span</dt><dd>T_cap minus T_floor in Automatic / Historical mode.</dd>
+                <dt>Pumped primary volume</dt><dd>Primary network water circulated during the selected interval or period.</dd>
+              </dl>
+              <p>VET for a period is total sold energy divided by total pumped volume, not the average of interval VET values.</p>
+            </section>
+
+            <section class="help-section">
+              <h2>Compare periods</h2>
+              <p>Compare periods evaluates two selected operating periods using the same calculation methodology. Different weather, heat demand and period duration can affect direct comparability.</p>
+              <h2>Intervention / Three-pipe analysis</h2>
+              <p>Use Intervention analysis to compare operation before and after a network change, such as return-side heat utilization or decentralized heat integration. Baseline and after periods should preferably represent comparable seasons and conditions. The historical FLOOR reference is frozen for the formal before/after comparison; post-intervention FLOOR development is shown separately. Measured differences do not by themselves prove causation.</p>
+            </section>
+
+            <section class="help-section help-privacy">
+              <h2>Privacy</h2>
+              <p>Imported datasets are processed locally in the browser and are not uploaded by the dashboard.</p>
+            </section>
+          </div>
+          <details class="help-data-quality">
+            <summary>Data quality considerations</summary>
+            <ul>
+              <li>Missing or invalid rows are rejected and reported.</li>
+              <li>Very sparse datasets may not support reliable historical FLOOR identification; Automatic FLOOR requires sufficient observations in each outdoor-temperature bin.</li>
+              <li>Sensor errors and abnormal operating periods can affect results.</li>
+              <li>Longer datasets covering different outdoor conditions generally provide a stronger historical FLOOR reference.</li>
+            </ul>
+            <p>These are practical considerations, not rigid universal requirements.</p>
+          </details>
+        </div>
+      </details>
+
       <nav class="tabs" role="tablist" aria-label="Analysis mode">
         <button id="snapshot-tab" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="snapshot-view">Snapshot</button>
         <button id="series-tab" class="tab" type="button" role="tab" aria-selected="false" aria-controls="series-view">Time series</button>
@@ -107,8 +193,11 @@
           <input id="csv-file" class="file-input" type="file" accept=".csv,text/csv">
           <div class="import-actions">
             <a class="download-link" href="sample-vet-data.csv" download>Download example CSV</a>
+            <button id="load-demo-data" class="quiet-button" type="button">Load demo data</button>
             <button id="remove-data" class="quiet-button" type="button" hidden>Remove dataset</button>
+            <button id="clear-demo-data" class="quiet-button" type="button" hidden>Clear demo data</button>
           </div>
+          <p id="demo-notice" class="demo-notice" role="status" hidden>Synthetic demo dataset — not operational network data</p>
           <p id="csv-status" class="import-status" role="status">No file loaded. Import the example CSV to explore the analysis.</p>
           <section id="import-report" class="import-report" hidden aria-live="polite">
             <p id="import-count" class="import-count"></p>

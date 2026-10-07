@@ -14,6 +14,24 @@ main { width: min(100%, 1160px); margin: 0 auto; }
 .mark { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 10px; background: #183b2e; color: #e8f4ec; font-size: .76rem; letter-spacing: -.04em; }
 .local-tag, .unit-tag { padding: 7px 10px; border: 1px solid #dce5df; border-radius: 999px; color: #6d7b73; font-size: .74rem; white-space: nowrap; }
 .heading { margin-bottom: 24px; }
+.help-guide { margin: -7px 0 20px; padding: 12px 15px; border: 1px solid #dce4df; border-radius: 10px; background: #fff; }
+.help-guide > summary, .help-data-quality > summary { width: fit-content; color: #365942; font-size: .79rem; font-weight: 700; cursor: pointer; }
+.help-guide-content { padding-top: 10px; color: #65746c; font-size: .75rem; line-height: 1.55; }
+.help-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; }
+.help-section { min-width: 0; padding: 10px 0; border-top: 1px solid #edf0ee; }
+.help-section h2 { margin: 0 0 7px; color: #34483b; font-size: .84rem; }
+.help-section h3 { margin: 12px 0 4px; color: #465b4e; font-size: .76rem; }
+.help-section p { margin: 6px 0; }
+.help-section ol, .help-data-quality ul { margin: 5px 0 8px; padding-left: 21px; }
+.help-section li, .help-data-quality li { margin: 3px 0; }
+.help-section dl { display: grid; grid-template-columns: minmax(120px, .7fr) 1.3fr; gap: 6px 12px; margin: 8px 0; }
+.help-section dt { color: #40564a; font-weight: 680; }
+.help-section dd { margin: 0; }
+.help-section pre { overflow-x: auto; margin: 9px 0; padding: 9px; border: 1px solid #edf0ee; border-radius: 7px; background: #f8faf8; font-size: .68rem; line-height: 1.5; }
+.help-section pre code { padding: 0; background: transparent; white-space: pre; }
+.help-data-quality { margin-top: 6px; padding: 10px 12px; border: 1px solid #e7ece8; border-radius: 8px; background: #fafbfa; }
+.help-data-quality ul { color: #65746c; font-size: .73rem; }
+.help-data-quality p { margin: 5px 0 0; }
 .eyebrow { margin: 0 0 7px; color: #478062; font-size: .74rem; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; }
 h1 { margin: 0; font-size: clamp(2rem, 5vw, 2.8rem); font-weight: 660; letter-spacing: -.055em; line-height: 1.1; }
 .intro { max-width: 760px; margin: 10px 0 0; color: #65746c; font-size: .96rem; line-height: 1.6; }
@@ -177,12 +195,13 @@ footer { padding-top: 19px; color: #89958e; font-size: .71rem; text-align: cente
 .drop-zone strong { color: #34483b; font-size: .8rem; font-weight: 680; }
 .drop-zone > div > span { color: #7b8980; font-size: .72rem; }
 .drop-zone .file-button { min-height: 37px; }
-.import-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; }
+.import-actions { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 10px 16px; margin-top: 12px; }
 .download-link { color: #3b6a49; font-size: .75rem; font-weight: 630; text-decoration: none; }
 .download-link:hover { text-decoration: underline; }
 .quiet-button { padding: 7px 10px; border: 1px solid #dbe3de; border-radius: 7px; background: #fff; color: #58675e; font: inherit; font-size: .72rem; font-weight: 620; cursor: pointer; }
 .quiet-button:hover { background: #f1f4f1; }
 .import-status { margin-top: 10px; }
+.demo-notice { margin: 8px 0 0; padding: 7px 10px; border-left: 2px solid #8fa996; background: #f5f8f5; color: #607067; font-size: .72rem; }
 .import-report { margin-top: 9px; padding: 12px 14px; border: 1px solid #e2e9e4; border-radius: 9px; background: #fbfcfb; }
 .import-count { margin: 0; color: #43564a; font-size: .77rem; font-weight: 650; font-variant-numeric: tabular-nums; }
 .import-errors, .rejection-details ul { margin: 8px 0 0; padding-left: 19px; color: #984d37; font-size: .73rem; line-height: 1.55; }
@@ -216,6 +235,10 @@ footer { padding-top: 19px; color: #89958e; font-size: .71rem; text-align: cente
   .compare-button { grid-column: 1 / -1; justify-self: start; }
 }
 @media (max-width: 600px) {
+  .help-guide { margin-top: -5px; padding: 11px 12px; }
+  .help-grid { grid-template-columns: 1fr; gap: 0; }
+  .help-section dl { grid-template-columns: 1fr; gap: 2px; }
+  .help-section dd { margin-bottom: 5px; }
   .drop-zone { align-items: flex-start; flex-wrap: wrap; }
   .drop-zone > div { min-width: calc(100% - 55px); }
   .drop-zone .file-button { margin-left: 52px; }
