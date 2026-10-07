@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#f3f5f3">
+    <title>VET dashboard | District heating</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="app.mjs"></script>
+  </head>
+  <body>
+    <main>
+      <div class="topline">
+        <div class="brand"><span class="mark" aria-hidden="true">VET</span><span>District heating analytics</span></div>
+        <span class="local-tag">Local engineering tool</span>
+      </div>
+
+      <header class="heading">
+        <p class="eyebrow">Volumetric energy transfer</p>
+        <h1>VET dashboard</h1>
+        <p class="intro">Track useful heat delivered per unit of circulated primary water and its utilization of the available network temperature potential.</p>
+      </header>
+
+      <nav class="tabs" role="tablist" aria-label="Analysis mode">
+        <button id="snapshot-tab" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="snapshot-view">Snapshot</button>
+        <button id="series-tab" class="tab" type="button" role="tab" aria-selected="false" aria-controls="series-view">Time series</button>
+        <button id="intervention-tab" class="tab" type="button" role="tab" aria-selected="false" aria-controls="intervention-view">Intervention / Three-pipe analysis</button>
+      </nav>
+
+      <section id="snapshot-view" class="tab-view" role="tabpanel" aria-labelledby="snapshot-tab">
+        <div class="dashboard">
+          <section class="inputs-panel" aria-labelledby="snapshot-input-heading">
+            <h2 id="snapshot-input-heading" class="section-heading">Reporting period</h2>
+            <p class="section-note">Enter energy and volume for the same period.</p>
+            <form id="snapshot-form" class="fields" novalidate>
+              <div>
+                <label for="sold-energy">Sold heat energy</label>
+                <div class="input-wrap"><input id="sold-energy" name="soldEnergyMWh" type="number" min="0" step="any" inputmode="decimal" placeholder="1250" required><span class="unit">MWh</span></div>
+              </div>
+              <div>
+                <label for="pumped-volume">Pumped primary water volume</label>
+                <div class="input-wrap"><input id="pumped-volume" name="pumpedVolumeM3" type="number" min="0" step="any" inputmode="decimal" placeholder="28000" required><span class="unit">m³</span></div>
+              </div>
+              <div class="bound-group">
+                <div class="group-title">Available temperature bounds</div>
+                <p class="section-note">Operational limits; independent of measured network temperatures.</p>
+                <div class="bound-fields">
+                  <div><label for="t-cap">T_cap · highest available</label><div class="input-wrap"><input id="t-cap" name="TcapC" type="number" step="any" inputmode="decimal" placeholder="85" required><span class="unit">°C</span></div></div>
+                  <div><label for="t-floor">T_floor · lowest useful</label><div class="input-wrap"><input id="t-floor" name="TfloorC" type="number" step="any" inputmode="decimal" placeholder="40" required><span class="unit">°C</span></div></div>
+                </div>
+              </div>
+              <div class="bound-group diagnostic-inputs">
+                <div class="group-title">Measured network temperatures <span class="optional">Optional · diagnostic</span></div>
+                <div class="bound-fields">
+                  <div><label for="supply-temp">Measured supply</label><div class="input-wrap"><input id="supply-temp" name="supplyTemperatureC" type="number" step="any" inputmode="decimal" placeholder="Optional"><span class="unit">°C</span></div></div>
+                  <div><label for="return-temp">Measured return</label><div class="input-wrap"><input id="return-temp" name="returnTemperatureC" type="number" step="any" inputmode="decimal" placeholder="Optional"><span class="unit">°C</span></div></div>
+                </div>
+                <p class="section-note">Snapshot T_cap and T_floor remain independent of these optional diagnostics; measured supply and return are used only to report measured ΔT.</p>
+              </div>
+            </form>
+            <p id="snapshot-error" class="error-message" role="status"></p>
+          </section>
+
+          <section class="results-panel" aria-label="Snapshot VET results" aria-live="polite">
+            <div class="panel-heading"><div><p class="eyebrow">Snapshot indicators</p><h2>VET performance</h2></div><span class="unit-tag">Per reporting period</span></div>
+            <div class="kpi-grid">
+              <article class="kpi-card kpi-vet"><p class="kpi-label">Volumetric energy transfer</p><div class="kpi-value"><output id="snapshot-vet">—</output><span>kWh/m³</span></div><p class="kpi-help">Useful sold heat per pumped water volume</p></article>
+              <article class="kpi-card kpi-util"><p class="kpi-label">VET utilization · η_VET</p><div class="kpi-value"><output id="snapshot-utilization">—</output><span>%</span></div><p class="kpi-help">Relative to the entered scenario bounds</p></article>
+              <article class="kpi-card"><p class="kpi-label">Scenario temperature span</p><div class="kpi-value"><output id="snapshot-delta">—</output><span>K</span></div></article>
+              <article class="kpi-card"><p class="kpi-label">Maximum practical volumetric potential</p><div class="kpi-value"><output id="snapshot-potential">—</output><span>kWh/m³</span></div></article>
+            </div>
+
+            <section class="utilization-visual" aria-labelledby="snapshot-visual-heading">
+              <div class="visual-heading"><h3 id="snapshot-visual-heading">Actual VET vs practical volumetric potential</h3><span id="snapshot-util-label">— of scenario potential</span></div>
+              <div class="util-track" role="img" aria-label="VET utilization compared with entered scenario bounds">
+                <div id="snapshot-util-bar" class="util-bar"></div>
+                <span id="snapshot-util-marker" class="potential-marker" aria-hidden="true"></span>
+              </div>
+              <div class="util-scale"><span>0 kWh/m³</span><span id="snapshot-scale-end">100% scale</span></div>
+              <div class="chart-legend"><span><i style="--series-color:#38835a"></i>Actual VET</span><span><i style="--series-color:#384a40"></i>Practical potential reference</span></div>
+              <p id="snapshot-overflow-note" class="scale-note"></p>
+            </section>
+
+            <section class="operating-data" aria-labelledby="operating-heading">
+              <h3 id="operating-heading">Operating data</h3>
+              <div class="operating-grid">
+                <div><span>Sold energy</span><strong><output id="operating-energy">—</output> <small>MWh</small></strong></div>
+                <div><span>Pumped primary volume</span><strong><output id="operating-volume">—</output> <small>m³</small></strong></div>
+                <div><span>Measured supply</span><strong><output id="operating-supply">—</output> <small>°C</small></strong></div>
+                <div><span>Measured return</span><strong><output id="operating-return">—</output> <small>°C</small></strong></div>
+                <div><span>Measured ΔT</span><strong><output id="operating-measured-delta">—</output> <small>K</small></strong></div>
+              </div>
+            </section>
+          </section>
+        </div>
+      </section>
+
+      <section id="series-view" class="tab-view" role="tabpanel" aria-labelledby="series-tab" hidden>
+        <section class="import-panel" aria-labelledby="import-heading">
+          <div class="import-intro"><p class="eyebrow">Interval analysis</p><h2 id="import-heading">Import time-series data</h2><p class="section-note">Drop a CSV here or browse for one. Rows are validated individually; accepted rows are plotted against their timestamps, without assuming a fixed timestep.</p></div>
+          <div id="drop-zone" class="drop-zone">
+            <span class="drop-icon" aria-hidden="true">CSV</span>
+            <div><strong>Drag a CSV file here</strong><span>Hourly, daily, monthly, or other regular sampling</span></div>
+            <label class="file-button" for="csv-file">Choose file</label>
+          </div>
+          <input id="csv-file" class="file-input" type="file" accept=".csv,text/csv">
+          <div class="import-actions">
+            <a class="download-link" href="sample-vet-data.csv" download>Download example CSV</a>
+            <button id="remove-data" class="quiet-button" type="button" hidden>Remove dataset</button>
+          </div>
+          <p id="csv-status" class="import-status" role="status">No file loaded. Import the example CSV to explore the analysis.</p>
+          <section id="import-report" class="import-report" hidden aria-live="polite">
+            <p id="import-count" class="import-count"></p>
+            <ul id="import-global-errors" class="import-errors"></ul>
+            <details id="rejection-details" class="rejection-details" hidden><summary id="rejection-summary">Rejected rows</summary><ul id="rejected-rows"></ul></details>
+          </section>
+          <details class="csv-format"><summary>CSV columns and validation</summary><p>Required: <code>timestamp,sold_energy_MWh,pumped_volume_m3</code>. Optional: <code>supply_temperature_C,return_temperature_C,outdoor_temperature_C,T_cap_C,T_floor_C</code>. Existing files with T_cap_C and T_floor_C remain supported. Energy and volume in each row must cover the same interval. Invalid rows are listed with their row number and reason.</p></details>
+        </section>
+
+        <section class="method-panel" aria-labelledby="method-heading">
+          <div class="method-heading"><div><p class="eyebrow">Temperature potential</p><h2 id="method-heading">Choose CAP and FLOOR method</h2></div><span class="unit-tag">VET remains based on sold energy and volume</span></div>
+          <div class="method-selector"><label for="potential-method">Temperature potential method</label><select id="potential-method"><option value="automatic">Automatic / Historical FLOOR · recommended</option><option value="engineering">Engineering curve · custom outdoor-temperature curve</option><option value="manual">Manual / Scenario · fixed bounds</option></select></div>
+          <p id="method-explanation" class="section-note">Automatic T_cap — measured available supply at the same network boundary as pumped primary volume. Automatic T_floor — 10th-percentile historical return-temperature benchmark by outdoor-temperature bin.</p>
+          <p id="method-status" class="method-status" role="status"></p>
+          <details id="floor-methodology" class="floor-methodology" open>
+            <summary>Automatic FLOOR methodology</summary>
+            <p>Historical return temperatures are grouped into 2 °C outdoor-temperature bins. Bins with at least 20 observations use the linearly interpolated 10th percentile as FLOOR; bins below 20 are low-confidence and unsupported. Supported bins are linearly interpolated. Outside the supported range, the nearest FLOOR reference is held and marked as outside calibration. This empirical operational reference is not an absolute thermodynamic minimum or physical maximum.</p>
+            <p id="floor-reference-note" class="section-note">Displayed FLOOR curve uses the full imported historical dataset.</p>
+            <div id="floor-chart" class="floor-chart"></div>
+            <div class="table-scroll"><table class="floor-bin-table"><thead><tr><th>Outdoor bin</th><th>Observations</th><th>10th percentile FLOOR</th><th>Median return</th><th>Calibration</th></tr></thead><tbody id="floor-bin-rows"></tbody></table></div>
+          </details>
+          <div id="engineering-controls" class="method-controls" hidden>
+            <label class="method-upload">Engineering curve CSV <input id="engineering-curve-file" type="file" accept=".csv,text/csv"><small>Required columns: outdoor_temperature_C,T_floor_C. Optional: T_cap_C. A CAP curve takes precedence; otherwise imported T_cap_C then measured supply is used.</small></label>
+            <p id="engineering-curve-status" class="section-note">No engineering curve loaded.</p>
+          </div>
+          <div id="manual-controls" class="method-controls manual-controls" hidden>
+            <label>T_cap <span class="input-wrap"><input id="manual-cap" type="number" step="any" inputmode="decimal" placeholder="Enter scenario CAP"><span class="unit">°C</span></span></label>
+            <label>T_floor <span class="input-wrap"><input id="manual-floor" type="number" step="any" inputmode="decimal" placeholder="Enter scenario FLOOR"><span class="unit">°C</span></span></label>
+            <p class="section-note">Fixed values are applied to every imported interval for scenario analysis.</p>
+          </div>
+        </section>
+
+        <section id="series-empty" class="empty-state"><strong>Time-series analysis is ready</strong><p>Import a CSV to see period totals, volume-weighted indicators, charts, interval calculations, and optional period comparison.</p></section>
+
+        <section id="series-results" hidden>
+          <div class="series-heading"><div><p class="eyebrow">Imported period</p><h2>Time-series summary</h2></div><span id="series-count" class="unit-tag">— accepted intervals</span></div>
+          <div class="summary-grid">
+            <article class="summary-card summary-primary"><span>Total sold energy</span><strong><output id="summary-energy">—</output> <small>MWh</small></strong></article>
+            <article class="summary-card"><span>Total pumped primary volume</span><strong><output id="summary-volume">—</output> <small>m³</small></strong></article>
+            <article class="summary-card"><span>Period VET · totals ratio</span><strong><output id="summary-vet">—</output> <small>kWh/m³</small></strong></article>
+            <article class="summary-card"><span id="summary-util-label">Aggregate η_VET · historical reference utilization</span><strong><output id="summary-util">—</output> <small>%</small></strong></article>
+            <article class="summary-card"><span id="summary-delta-label">Average reference temperature span</span><strong><output id="summary-delta">—</output> <small>K</small></strong></article>
+            <article id="summary-measured-card" class="summary-card" hidden><span>Average measured ΔT · volume weighted</span><strong><output id="summary-measured-delta">—</output> <small>K</small></strong></article>
+            <article id="summary-supply-card" class="summary-card" hidden><span>Average measured supply · volume weighted</span><strong><output id="summary-supply">—</output> <small>°C</small></strong></article>
+            <article id="summary-return-card" class="summary-card" hidden><span>Average measured return · volume weighted</span><strong><output id="summary-return">—</output> <small>°C</small></strong></article>
+            <article id="summary-outdoor-card" class="summary-card" hidden><span>Time-weighted average outdoor temperature</span><strong><output id="summary-outdoor">—</output> <small>°C</small></strong></article>
+          </div>
+          <p id="series-theory-note" class="summary-note">VET [kWh/m³] is useful energy delivered per circulated water volume. In Automatic / Historical mode, η_VET [%] is utilization relative to the historical temperature-potential reference, not an absolute physical maximum. Values above 100% mean operation exceeds this empirical reference. VET and η_VET remain distinct; temperature averages are weighted by pumped volume.</p>
+          <p id="potential-coverage" class="summary-note"></p>
+
+          <details id="compare-panel" class="compare-panel">
+            <summary>Compare periods</summary>
+          <p class="section-note">Choose baseline and comparison ranges. Date/time controls use UTC; the end time is included. Change summaries describe differences without rating them.</p>
+            <label id="floor-reference-label" class="reference-select">Automatic FLOOR reference
+              <select id="floor-reference"><option value="baseline">Use baseline period to calibrate FLOOR</option><option value="history">Use full historical dataset as FLOOR reference</option></select>
+            </label>
+            <form id="compare-form" class="compare-form">
+              <fieldset><legend>Baseline period</legend><label>From<input id="baseline-start" type="datetime-local" step="any" required></label><label>To<input id="baseline-end" type="datetime-local" step="any" required></label></fieldset>
+              <fieldset><legend>Comparison period</legend><label>From<input id="comparison-start" type="datetime-local" step="any" required></label><label>To<input id="comparison-end" type="datetime-local" step="any" required></label></fieldset>
+              <button class="file-button compare-button" type="submit">Compare selected periods</button>
+            </form>
+            <p id="compare-error" class="error-message" role="status"></p>
+            <section id="comparison-results" class="comparison-results" hidden>
+              <div id="comparison-context" class="comparison-context"></div>
+              <p id="comparison-floor-reference" class="summary-note"></p>
+              <div class="table-scroll"><table class="comparison-table"><thead><tr><th>Indicator</th><th>Baseline</th><th>Comparison</th><th>Absolute change</th><th>Change</th></tr></thead><tbody id="comparison-rows"></tbody></table></div>
+              <p id="comparison-summary" class="comparison-summary"></p>
+            </section>
+          </details>
+
+          <div id="charts" class="charts-grid"></div>
+          <details class="interval-details">
+            <summary id="interval-summary">Show interval calculations</summary>
+              <div class="table-scroll"><table><thead><tr><th>Timestamp</th><th>Sold energy<br>MWh</th><th>Pumped volume<br>m³</th><th>Outdoor<br>°C</th><th>T_cap<br>°C</th><th>T_floor<br>°C</th><th>FLOOR range</th><th>Supply<br>°C</th><th>Return<br>°C</th><th>VET<br>kWh/m³</th><th id="interval-span-heading">Reference temperature span<br>K</th><th id="interval-potential-heading">Reference volumetric potential<br>kWh/m³</th><th>η_VET<br>%</th><th>Measured ΔT<br>K</th></tr></thead><tbody id="interval-rows"></tbody></table></div>
+          </details>
+        </section>
+      </section>
+
+      <section id="intervention-view" class="tab-view" role="tabpanel" aria-labelledby="intervention-tab" hidden>
+        <section id="intervention-empty" class="empty-state"><strong>Intervention analysis is ready</strong><p>Import a time-series CSV in the Time series tab. The dataset remains in this browser session and is shared with this analysis.</p></section>
+        <section id="intervention-workspace" hidden>
+          <section class="intervention-panel" aria-labelledby="intervention-heading">
+            <div class="method-heading"><div><p class="eyebrow">Before and after analysis</p><h2 id="intervention-heading">Intervention definition</h2></div><span class="unit-tag">Uses the imported time series</span></div>
+            <form id="intervention-form" class="intervention-form" novalidate>
+              <div class="intervention-meta">
+                <label>Intervention name<input id="intervention-name" type="text" placeholder="Network intervention"></label>
+                <label>Intervention date<input id="intervention-date" type="date" required></label>
+                <label>Intervention type<select id="intervention-type"><option>Three-pipe · return-side heat utilization</option><option>Three-pipe · decentralized heat producer</option><option>Other network intervention</option></select></label>
+                <label>Stabilization / exclusion period<input id="intervention-stabilization" type="number" min="0" step="1" value="0"><small>Whole days excluded on both sides of the intervention date.</small></label>
+                <label class="intervention-notes">Notes <span class="optional">Optional</span><textarea id="intervention-notes" rows="2" placeholder="Commissioning or operating context"></textarea></label>
+              </div>
+              <div class="intervention-periods">
+                <fieldset><legend>Baseline period · before commissioning</legend><label>From<input id="intervention-baseline-start" type="date" required></label><label>To<input id="intervention-baseline-end" type="date" required></label></fieldset>
+                <fieldset><legend>After-intervention period</legend><label>From<input id="intervention-after-start" type="date" required></label><label>To<input id="intervention-after-end" type="date" required></label></fieldset>
+              </div>
+              <label id="intervention-floor-reference-label" class="reference-select">Automatic FLOOR reference
+                <select id="intervention-floor-reference"><option value="baseline">Baseline period (recommended · frozen for both periods)</option><option value="history">Full historical dataset (frozen for both periods)</option></select>
+              </label>
+              <p id="intervention-method-note" class="section-note">Temperature method: Automatic · measured supply CAP and historical FLOOR curve. Change CAP/FLOOR method in the Time series tab. Engineering and Manual / Scenario selections are reused here.</p>
+              <p class="section-note">Rows in the selected whole-day stabilization window are excluded automatically. Period changes are measured differences; the date alone does not establish causation.</p>
+              <details class="intervention-interpretation"><summary>Three-pipe interpretation</summary><p>Return-side heat utilization can extract useful heat from return-side water without increasing primary circulation. A decentralized heat producer can add useful delivered heat without increasing primary circulation. VET reflects sold energy relative to pumped primary volume: a return-temperature change alone is not rated as deterioration or credited as improved VET. These before/after data do not, by themselves, prove the intervention caused a change.</p></details>
+              <button class="file-button compare-button" type="submit">Analyze intervention</button>
+            </form>
+            <p id="intervention-error" class="error-message" role="status"></p>
+          </section>
+
+          <section id="intervention-results" hidden aria-live="polite">
+            <div class="series-heading"><div><p class="eyebrow">Selected intervention</p><h2 id="intervention-result-title">Before and after</h2></div><span id="intervention-period-count" class="unit-tag"></span></div>
+            <p id="intervention-context" class="comparison-context"></p>
+            <p id="intervention-floor-result" class="summary-note"></p>
+            <div class="table-scroll"><table class="comparison-table"><thead><tr><th>Indicator</th><th>Baseline</th><th>After intervention</th><th>Absolute change</th><th>Relative change</th></tr></thead><tbody id="intervention-metric-rows"></tbody></table></div>
+            <p id="intervention-summary" class="comparison-summary"></p>
+
+            <details id="post-floor-development" class="floor-methodology">
+              <summary>Observed operational FLOOR development</summary>
+              <p>Calculated separately from the frozen baseline FLOOR used for the formal η_VET comparison. This is a new historical operational benchmark, not a retroactive change to the before/after results.</p>
+              <label class="floor-development-input">Outdoor temperature for comparison
+                <span class="input-wrap"><input id="floor-development-outdoor" type="number" step="any" value="-10"><span class="unit">°C</span></span>
+              </label>
+              <p id="floor-development-result" class="summary-note"></p>
+              <h4 class="floor-bin-heading">Frozen reference FLOOR bins used by the comparison</h4>
+              <div class="table-scroll"><table class="floor-bin-table"><thead><tr><th>Outdoor bin</th><th>Observations</th><th>10th percentile FLOOR</th><th>Calibration</th></tr></thead><tbody id="intervention-reference-bins"></tbody></table></div>
+              <h4 class="floor-bin-heading">Post-intervention observed FLOOR bins</h4>
+              <div class="table-scroll"><table class="floor-bin-table"><thead><tr><th>Outdoor bin</th><th>Observations</th><th>10th percentile FLOOR</th><th>Calibration</th></tr></thead><tbody id="intervention-post-bins"></tbody></table></div>
+            </details>
+            <h3 class="intervention-chart-heading">Operating data around the intervention</h3>
+            <p class="section-note">Only the selected baseline and after periods are plotted. The vertical marker shows the intervention date; line colors distinguish the periods and carry no performance rating.</p>
+            <div id="intervention-charts" class="charts-grid"></div>
+          </section>
+        </section>
+      </section>
+
+      <details class="about">
+        <summary>About the VET index</summary>
+        <div class="about-copy">
+          <p>The Volumetric Energy Transfer (VET) index is a network-level indicator of volumetric energy efficiency. It links useful delivered thermal energy to the volume of water circulated in the primary district-heating network and complements existing district-heating KPIs.</p>
+          <p><strong>VET</strong> = sold heat energy ÷ pumped primary-water volume. For practical inputs, VET [kWh/m³] = sold energy [MWh] × 1,000 ÷ pumped volume [m³]. Energy and volume must refer to the same reporting period. In time-series mode, the same calculation is applied to each interval.</p>
+          <p><strong>Temperature-potential reference</strong> uses T_cap and T_floor. In Automatic / Historical mode, measured supply temperature at the pumped-volume boundary defines T_cap. Measured return temperature does not directly define T_floor; historical measured return observations grouped by outdoor temperature identify the empirical FLOOR curve. This is not an absolute thermodynamic minimum. The reference span and 1.163 × span [kWh/m³] form a historical reference, not a physical maximum; operation can exceed it and η_VET can be above 100%. Engineering mode uses its imported curve. In Snapshot / Manual mode, entered T_cap and T_floor remain independent of optional diagnostic measured temperatures.</p>
+          <p><strong>Utilization</strong> η_VET = VET ÷ the volumetric potential associated with the selected bounds. In Automatic / Historical mode, η_VET is utilization relative to the historical temperature-potential reference. It has a thermodynamic connection to temperature utilization, but it is not an exergy-efficiency calculation. No good/bad thresholds are defined here.</p>
+          <p>In Snapshot / Manual mode, measured supply and return temperatures are optional diagnostics: they do not set entered T_cap or T_floor, and their difference is reported separately as measured ΔT. Automatic / Historical mode uses measured supply for T_cap and historical return observations to identify the empirical FLOOR curve.</p>
+        </div>
+      </details>
+
+      <footer class="site-footer">
+        <p class="footer-title">VET — Volumetric Energy Transfer Index</p>
+        <p>Developed from <cite>Temperature-Based Capacity in Next Generation District Heating</cite>, Oscar Raunio, 2026.</p>
+        <p class="footer-subtitle">Interactive implementation of the VET methodology for district-heating analysis.</p>
+        <p class="privacy-statement"><strong>Local processing</strong><br>Imported CSV data is processed locally in your browser. The dashboard does not upload or transmit imported datasets.</p>
+      </footer>
+    </main>
+  </body>
+</html>

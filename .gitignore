@@ -1,0 +1,22 @@
+# Local environment and editor configuration
+.env
+.env.*
+.vscode/
+.idea/
+.aws/
+.codex/
+.agents/
+
+# Generated dependencies and logs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+*.log
+
+# Keep operator exports out of public commits; allow the synthetic demo dataset.
+*.csv
+!sample-vet-data.csv
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
